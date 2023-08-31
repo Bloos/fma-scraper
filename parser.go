@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"io"
+	"encoding/json"
 )
 
 func list(c context.Context, jobs chan<- Track, genre string, page int) error {
@@ -59,6 +60,7 @@ func parsePage(r io.Reader) (tracks []Track) {
 	var tagName, k, v []byte
 	var hasAttr bool
 
+
 	for {
 		t := doc.Next()
 
@@ -69,9 +71,23 @@ func parsePage(r io.Reader) (tracks []Track) {
 			// Check for new item
 			if atom.Lookup(tagName) == atom.Div {
 				k, v, hasAttr = doc.TagAttr()
+				
 				if atom.Lookup(k) == atom.Class && bytes.HasPrefix(v, []byte("play-item")) {
 					track = Track{}
 					state = 0
+				}
+				k, v, hasAttr = doc.TagAttr()
+
+				if string(k) == "data-track-info" {
+					var newv map[string]interface{}
+					json.Unmarshal(v, &newv)
+					
+					track.Download = string(newv["downloadUrl"].(string))
+
+					// Commit token
+					tracks = append(tracks, track)
+
+					state = -1
 				}
 				goto nextToken
 			}
@@ -108,25 +124,25 @@ func parsePage(r io.Reader) (tracks []Track) {
 			}
 
 		// Expecting download link
-		case t == html.StartTagToken && state == 2:
-			if atom.Lookup(tagName) != atom.A { goto nextToken }
+		// case t == html.StartTagToken && state == 2:
+		// 	if atom.Lookup(tagName) != atom.A { goto nextToken }
 
-			for {
-				k, v, hasAttr = doc.TagAttr()
+		// 	for {
+		// 		k, v, hasAttr = doc.TagAttr()
 
-				if atom.Lookup(k) == atom.Href &&
-					bytes.HasPrefix(v, []byte("https://freemusicarchive.org/music/download/")){
-					track.Download = string(v)
+		// 		if atom.Lookup(k) == atom.Href &&
+		// 			bytes.HasPrefix(v, []byte("https://freemusicarchive.org/music/download/")){
+		// 			track.Download = string(v)
 
-					// Commit token
-					tracks = append(tracks, track)
+		// 			// Commit token
+		// 			tracks = append(tracks, track)
 
-					state = -1
-					goto nextToken
-				}
+		// 			state = -1
+		// 			goto nextToken
+		// 		}
 
-				if !hasAttr { break }
-			}
+		// 		if !hasAttr { break }
+		// 	}
 
 		// Expecting HTML text
 		case t == html.TextToken && state == 1:
