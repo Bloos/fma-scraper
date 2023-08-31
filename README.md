@@ -1,3 +1,5 @@
+The website has changed and the old fma-scraper project is now broken. I've fixed it, but I cannot guarantee correctness and stability. I'm putting it here because the original project is archived and cannot be updated.
+
 # Free Music Archive scraper
 High-performance scraper for https://freemusicarchive.org
 
